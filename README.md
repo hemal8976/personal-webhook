@@ -45,7 +45,17 @@ Edit `.env` if you want to change default settings:
 - `NODE_ENV`: Environment (development/production)
 - `CLICKUP_API_TOKEN`: ClickUp personal API token
 - `CLICKUP_DEFAULT_TASK_ID`: Fallback task ID when no keyword route matches
-- `CLICKUP_MEETING_ROUTING_JSON`: JSON array with keyword-to-task mapping rules
+- `CLICKUP_MEETING_ROUTING_JSON`: JSON array with keyword routing + per-project task routing (`commentTaskId`, `taskRouting`)
+- `CLICKUP_ENABLE_TASK_CREATION`: Global fallback toggle if route-level `taskRouting.enabled` is not set
+- `CLICKUP_TASK_CREATION_LIST_ID`: Global fallback list ID if route-level `taskRouting.targetListId` is not set
+- `CLICKUP_TASK_DEFAULT_STATUS`: Global fallback status (`backlog` default)
+- `CLICKUP_TASK_ASSIGNEE_IDS`: Global fallback comma-separated assignee IDs
+- `CLICKUP_TEAM_LEAD_USER_ID`: Backward-compatible single assignee fallback
+- `CLICKUP_MAIN_TASK_DESCRIPTION_MAX_CHARS`: Max parent task description length (transcript included)
+- `GROQ_API_KEY`: Groq API key for transcript task extraction
+- `GROQ_MODEL`: Groq model name (default: `llama-3.3-70b-versatile`)
+- `GROQ_MAX_TRANSCRIPT_CHARS`: Max transcript characters sent to Groq (default: 20000)
+- `GROQ_TASK_CONFIDENCE_THRESHOLD`: Subtasks are created only for items above threshold (`0.5` default)
 
 ## Usage
 
@@ -100,21 +110,34 @@ If ClickUp is configured, it will also post a formatted comment to the matched C
 - Shareable URL
 - Meeting summary (`default_summary.markdown_formatted` or `summary`)
 
+If Groq is configured (`GROQ_API_KEY`), the server extracts action tasks from transcript and:
+- logs all extracted items
+- creates one parent meeting task in ClickUp (backlog by default) with:
+  - title including meeting title + duration
+  - formatted call transcript in description
+- creates subtasks for items above route-level `taskRouting.confidenceThreshold` (or global fallback `GROQ_TASK_CONFIDENCE_THRESHOLD`)
+- uses evidence quote as subtask description
+
 ### ClickUp Routing Configuration
 
-Use `CLICKUP_MEETING_ROUTING_JSON` to map meeting titles/attendees to target tasks.
+Use `CLICKUP_MEETING_ROUTING_JSON` to map meeting titles/attendees to comment target and task/subtask target per project.
 
 Example:
 
 ```env
 CLICKUP_DEFAULT_TASK_ID=86aDefaultTask
-CLICKUP_MEETING_ROUTING_JSON=[{"name":"OpenCables","keywords":["opencables","sunil"],"taskId":"86aTask1","spaceId":"901","folderId":"902","listId":"903"},{"name":"Client A","keywords":["client a","acme"],"taskId":"86aTask2"}]
+CLICKUP_MEETING_ROUTING_JSON=[{"name":"OpenCables","keywords":["opencables","sunil"],"commentTaskId":"86aCommentTask1","spaceId":"901","folderId":"902","listId":"903","taskRouting":{"enabled":true,"targetSpaceId":"901","targetFolderId":"910","targetListId":"911","defaultStatus":"backlog","assigneeIds":[12345678],"confidenceThreshold":0.5}},{"name":"Client A","keywords":["client a","acme"],"commentTaskId":"86aCommentTask2","spaceId":"901","folderId":"920","listId":"921","taskRouting":{"enabled":true,"targetSpaceId":"901","targetFolderId":"930","targetListId":"931","defaultStatus":"backlog","assigneeIds":[87654321],"confidenceThreshold":0.6}}]
 ```
 
 Matching checks:
 - `meeting_title` / `title`
 - `recorded_by` name/email/domain
 - `calendar_invitees` name/email/domain
+
+Backward compatibility:
+- `taskId` is still accepted as alias for `commentTaskId`.
+- Existing global task creation env vars still work as fallback.
+- Task creation uses `taskRouting.targetListId` (required for API call). `targetSpaceId` and `targetFolderId` are supported for config clarity/logging.
 
 ## Testing Webhooks Locally
 

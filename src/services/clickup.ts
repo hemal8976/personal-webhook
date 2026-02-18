@@ -26,6 +26,23 @@ export interface ClickUpCommentResponse {
   };
 }
 
+export interface ClickUpCreateTaskRequest {
+  listId: string;
+  name: string;
+  description?: string;
+  assignees?: number[];
+  status?: string;
+  parentTaskId?: string;
+}
+
+export interface ClickUpTaskResponse {
+  id?: string;
+  name?: string;
+  status?: {
+    status?: string;
+  };
+}
+
 const DEFAULT_CLICKUP_API_BASE_URL = 'https://api.clickup.com/api/v2';
 
 const httpRequest = <T>(
@@ -113,6 +130,61 @@ export const postTaskComment = async (requestPayload: ClickUpCommentRequest): Pr
   const body = JSON.stringify(requestBody);
 
   const { statusCode, data } = await httpRequest<ClickUpCommentResponse & { err?: string }>(
+    endpoint,
+    'POST',
+    {
+      Authorization: clickUpApiToken,
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body).toString(),
+    },
+    body,
+  );
+
+  if (statusCode < 200 || statusCode >= 300) {
+    throw new Error(`ClickUp API error (${statusCode}): ${data.err || 'Unknown error'}`);
+  }
+
+  return data;
+};
+
+export const createTask = async (requestPayload: ClickUpCreateTaskRequest): Promise<ClickUpTaskResponse> => {
+  const clickUpApiToken = process.env.CLICKUP_API_TOKEN;
+
+  if (!clickUpApiToken) {
+    throw new Error('Missing CLICKUP_API_TOKEN environment variable');
+  }
+
+  const apiBaseUrl = process.env.CLICKUP_API_BASE_URL || DEFAULT_CLICKUP_API_BASE_URL;
+  const endpoint = `${apiBaseUrl}/list/${encodeURIComponent(requestPayload.listId)}/task`;
+  const requestBody: {
+    name: string;
+    description?: string;
+    assignees?: number[];
+    status?: string;
+    parent?: string;
+  } = {
+    name: requestPayload.name,
+  };
+
+  if (requestPayload.description) {
+    requestBody.description = requestPayload.description;
+  }
+
+  if (requestPayload.assignees && requestPayload.assignees.length > 0) {
+    requestBody.assignees = requestPayload.assignees;
+  }
+
+  if (requestPayload.status) {
+    requestBody.status = requestPayload.status;
+  }
+
+  if (requestPayload.parentTaskId) {
+    requestBody.parent = requestPayload.parentTaskId;
+  }
+
+  const body = JSON.stringify(requestBody);
+
+  const { statusCode, data } = await httpRequest<ClickUpTaskResponse & { err?: string }>(
     endpoint,
     'POST',
     {
