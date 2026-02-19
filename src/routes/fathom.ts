@@ -8,6 +8,7 @@ interface ClickUpMeetingRoute {
   name: string;
   keywords: string[];
   commentTaskId: string;
+  clickupApiToken?: string;
   spaceId?: string;
   folderId?: string;
   listId?: string;
@@ -69,6 +70,8 @@ const parseMeetingRoutes = (): ClickUpMeetingRoute[] => {
       const spaceId = typeof candidate.spaceId === 'string' ? candidate.spaceId : undefined;
       const folderId = typeof candidate.folderId === 'string' ? candidate.folderId : undefined;
       const listId = typeof candidate.listId === 'string' ? candidate.listId : undefined;
+      const clickupApiToken =
+        typeof candidate.clickupApiToken === 'string' ? candidate.clickupApiToken.trim() : undefined;
       const rawTaskRouting = candidate.taskRouting;
       const taskRouting =
         rawTaskRouting && typeof rawTaskRouting === 'object'
@@ -105,7 +108,7 @@ const parseMeetingRoutes = (): ClickUpMeetingRoute[] => {
             }
           : undefined;
 
-      return { name, commentTaskId, keywords, spaceId, folderId, listId, taskRouting };
+      return { name, commentTaskId, clickupApiToken, keywords, spaceId, folderId, listId, taskRouting };
     });
 
     return mappedRoutes.filter((route): route is ClickUpMeetingRoute => route !== null);
@@ -432,6 +435,7 @@ const createMeetingTasksInClickUp = async (
   const taskFolderId = resolveTaskFolderIdForRoute(route);
 
   const parentTask = await createTask({
+    apiToken: route.clickupApiToken,
     listId,
     name: buildMainMeetingTaskName(payload),
     description: buildMainTaskDescription(payload, extracted.tasks.length),
@@ -448,6 +452,7 @@ const createMeetingTasksInClickUp = async (
   for (const taskItem of selectedTasks) {
     try {
       await createTask({
+        apiToken: route.clickupApiToken,
         listId,
         parentTaskId,
         name: taskItem.task,
@@ -578,6 +583,7 @@ export const fathomWebhookHandler = async (req: Request, res: Response): Promise
     const commentText = buildClickUpComment(payload);
     const formattedComment = markdownToClickUpComment(commentText);
     const clickUpComment = await postTaskComment({
+      apiToken: resolvedRoute.clickupApiToken,
       taskId: resolvedRoute.commentTaskId,
       comment: formattedComment,
       notifyAll: false,
@@ -586,6 +592,7 @@ export const fathomWebhookHandler = async (req: Request, res: Response): Promise
     logger.info('Posted Fathom meeting to ClickUp task', {
       meetingTitle,
       commentTaskId: resolvedRoute.commentTaskId,
+      usingRouteToken: Boolean(resolvedRoute.clickupApiToken),
       routeName: resolvedRoute.name,
       matchedKeywords: resolvedRoute.matchedKeywords,
       clickUpCommentId: clickUpComment.id || null,

@@ -44,6 +44,7 @@ Edit `.env` if you want to change default settings:
 - `LOG_LEVEL`: Logging level (default: info)
 - `NODE_ENV`: Environment (development/production)
 - `CLICKUP_API_TOKEN`: ClickUp personal API token
+- Route-level override: add `clickupApiToken` inside each `CLICKUP_MEETING_ROUTING_JSON` entry to post/comment/create tasks as that project lead account
 - `CLICKUP_DEFAULT_TASK_ID`: Fallback task ID when no keyword route matches
 - `CLICKUP_MEETING_ROUTING_JSON`: JSON array with keyword routing + per-project task routing (`commentTaskId`, `taskRouting`)
 - `CLICKUP_ENABLE_TASK_CREATION`: Global fallback toggle if route-level `taskRouting.enabled` is not set
@@ -126,7 +127,7 @@ Example:
 
 ```env
 CLICKUP_DEFAULT_TASK_ID=86aDefaultTask
-CLICKUP_MEETING_ROUTING_JSON=[{"name":"OpenCables","keywords":["opencables","sunil"],"commentTaskId":"86aCommentTask1","spaceId":"901","folderId":"902","listId":"903","taskRouting":{"enabled":true,"targetSpaceId":"901","targetFolderId":"910","targetListId":"911","defaultStatus":"backlog","assigneeIds":[12345678],"confidenceThreshold":0.5}},{"name":"Client A","keywords":["client a","acme"],"commentTaskId":"86aCommentTask2","spaceId":"901","folderId":"920","listId":"921","taskRouting":{"enabled":true,"targetSpaceId":"901","targetFolderId":"930","targetListId":"931","defaultStatus":"backlog","assigneeIds":[87654321],"confidenceThreshold":0.6}}]
+CLICKUP_MEETING_ROUTING_JSON=[{"name":"OpenCables","keywords":["opencables","sunil"],"commentTaskId":"86aCommentTask1","clickupApiToken":"pk_project_lead_token_1","spaceId":"901","folderId":"902","listId":"903","taskRouting":{"enabled":true,"targetSpaceId":"901","targetFolderId":"910","targetListId":"911","defaultStatus":"backlog","assigneeIds":[12345678],"confidenceThreshold":0.5}},{"name":"Client A","keywords":["client a","acme"],"commentTaskId":"86aCommentTask2","clickupApiToken":"pk_project_lead_token_2","spaceId":"901","folderId":"920","listId":"921","taskRouting":{"enabled":true,"targetSpaceId":"901","targetFolderId":"930","targetListId":"931","defaultStatus":"backlog","assigneeIds":[87654321],"confidenceThreshold":0.6}}]
 ```
 
 Matching checks:
@@ -137,6 +138,7 @@ Matching checks:
 Backward compatibility:
 - `taskId` is still accepted as alias for `commentTaskId`.
 - Existing global task creation env vars still work as fallback.
+- If route-level `clickupApiToken` is missing, global `CLICKUP_API_TOKEN` is used.
 - Task creation uses `taskRouting.targetListId` (required for API call). `targetSpaceId` and `targetFolderId` are supported for config clarity/logging.
 
 ## Testing Webhooks Locally

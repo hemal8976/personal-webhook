@@ -2,6 +2,7 @@ import https from 'node:https';
 
 export interface ClickUpCommentRequest {
   taskId: string;
+  apiToken?: string;
   commentText?: string;
   comment?: Array<{
     text?: string;
@@ -28,6 +29,7 @@ export interface ClickUpCommentResponse {
 
 export interface ClickUpCreateTaskRequest {
   listId: string;
+  apiToken?: string;
   name: string;
   description?: string;
   assignees?: number[];
@@ -101,7 +103,7 @@ const httpRequest = <T>(
 };
 
 export const postTaskComment = async (requestPayload: ClickUpCommentRequest): Promise<ClickUpCommentResponse> => {
-  const clickUpApiToken = process.env.CLICKUP_API_TOKEN;
+  const clickUpApiToken = requestPayload.apiToken || process.env.CLICKUP_API_TOKEN;
 
   if (!clickUpApiToken) {
     throw new Error('Missing CLICKUP_API_TOKEN environment variable');
@@ -148,7 +150,7 @@ export const postTaskComment = async (requestPayload: ClickUpCommentRequest): Pr
 };
 
 export const createTask = async (requestPayload: ClickUpCreateTaskRequest): Promise<ClickUpTaskResponse> => {
-  const clickUpApiToken = process.env.CLICKUP_API_TOKEN;
+  const clickUpApiToken = requestPayload.apiToken || process.env.CLICKUP_API_TOKEN;
 
   if (!clickUpApiToken) {
     throw new Error('Missing CLICKUP_API_TOKEN environment variable');
