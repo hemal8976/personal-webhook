@@ -43,6 +43,9 @@ Edit `.env` if you want to change default settings:
 - `LOG_DIR`: Log files directory (default: logs)
 - `LOG_LEVEL`: Logging level (default: info)
 - `NODE_ENV`: Environment (development/production)
+- `LOCAL_EXECUTION`: Enables local-only routes such as `POST /local/sync` (`false` by default)
+- `MONGODB_URI`: MongoDB connection string for the local sync scaffold
+- `MONGODB_DB_NAME`: MongoDB database name for the local sync scaffold
 - `CLICKUP_API_TOKEN`: ClickUp personal API token
 - Route-level override: add `clickupApiToken` inside each `CLICKUP_MEETING_ROUTING_JSON` entry to post/comment/create tasks as that project lead account
 - `CLICKUP_DEFAULT_TASK_ID`: Fallback task ID when no keyword route matches
@@ -119,16 +122,36 @@ If Groq is configured (`GROQ_API_KEY`), the server extracts action tasks from tr
 - creates subtasks for items above route-level `taskRouting.confidenceThreshold` (or global fallback `GROQ_TASK_CONFIDENCE_THRESHOLD`)
 - uses evidence quote as subtask description
 
+### Local Sync Scaffold
+```bash
+POST /local/sync
+```
+
+This endpoint is hidden unless `LOCAL_EXECUTION=true`.
+
+When enabled, it:
+- validates `MONGODB_URI` and `MONGODB_DB_NAME`
+- opens a shared MongoDB client connection
+- runs the configured count queries against the `users` collection
+- returns the count for each metric so the MongoDB fetch path can be verified before ClickUp sync logic is added
+
+Example request:
+
+```bash
+curl -X POST http://localhost:9999/local/sync \
+  -H "Content-Type: application/json"
+```
+
+Current built-in metrics:
+- `overallUsers`: `createdAt >= 2025-08-14T10:14:44.158Z`
+- `thisMonthUsers`: `createdAt` between the first day of the current UTC month and now
+- `monthlyActiveUsers`: `lastLogin` between the first day of the current UTC month and now
+
 ### ClickUp Routing Configuration
 
 Use `CLICKUP_MEETING_ROUTING_JSON` to map meeting titles/attendees to comment target and task/subtask target per project.
 
-Example:
 
-```env
-CLICKUP_DEFAULT_TASK_ID=86aDefaultTask
-CLICKUP_MEETING_ROUTING_JSON=[{"name":"OpenCables","keywords":["opencables","sunil"],"commentTaskId":"86aCommentTask1","clickupApiToken":"pk_project_lead_token_1","spaceId":"901","folderId":"902","listId":"903","taskRouting":{"enabled":true,"targetSpaceId":"901","targetFolderId":"910","targetListId":"911","defaultStatus":"backlog","assigneeIds":[12345678],"confidenceThreshold":0.5}},{"name":"Client A","keywords":["client a","acme"],"commentTaskId":"86aCommentTask2","clickupApiToken":"pk_project_lead_token_2","spaceId":"901","folderId":"920","listId":"921","taskRouting":{"enabled":true,"targetSpaceId":"901","targetFolderId":"930","targetListId":"931","defaultStatus":"backlog","assigneeIds":[87654321],"confidenceThreshold":0.6}}]
-```
 
 Matching checks:
 - `meeting_title` / `title`
